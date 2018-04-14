@@ -80,6 +80,21 @@ class Hash extends LazyTransform {
 		h._handle = this._handle.copy();
 		return h;
 	}
+
+	saveState(outputEncoding) {
+		let buf = this._handle.saveState();
+		if(outputEncoding) {
+			return buf.toString(outputEncoding);
+		}
+		return buf;
+	}
+
+	restoreState(state, encoding) {
+		if (!Buffer.isBuffer(state)) {
+			state = Buffer.from(state, encoding);
+		}
+		return this._handle.restoreState(state);
+	}
 }
 
 function createHash(algorithm, options) {

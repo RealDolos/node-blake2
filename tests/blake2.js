@@ -367,6 +367,44 @@ describe('blake2', function() {
 			}
 		}
 	});
+
+	it('saveState/restoreState works', function() {
+		for(const algo of ['blake2b', 'blake2s', 'blake2bp', 'blake2sp']) {
+			const vectors = getTestVectors(`${__dirname}/test-vectors/unkeyed/${algo}-test.txt`);
+			for(const v of vectors) {
+				let hash = blake2.createHash(algo);
+				let hashCopy = hash.copy();
+				assert(hashCopy instanceof blake2.Hash, ".copy() should return a Hash");
+				hash.update(v.input);
+
+				let state = hash.saveState();
+				assert(Buffer.isBuffer(state), ".saveState() should return a buffer");
+				hashCopy.restoreState(state);
+
+				assert.deepEqual(hash.digest(), v.hash);
+				assert.deepEqual(hashCopy.digest(), v.hash);
+			}
+		}
+	});
+
+	it('saveState/restoreState works with encoding', function() {
+		for(const algo of ['blake2b', 'blake2s', 'blake2bp', 'blake2sp']) {
+			const vectors = getTestVectors(`${__dirname}/test-vectors/unkeyed/${algo}-test.txt`);
+			for(const v of vectors) {
+				let hash = blake2.createHash(algo);
+				let hashCopy = hash.copy();
+				assert(hashCopy instanceof blake2.Hash, ".copy() should return a Hash");
+				hash.update(v.input);
+
+				let state = hash.saveState("hex");
+				assert(typeof state === "string", ".saveState('hex') should return a string");
+				hashCopy.restoreState(state, "hex");
+
+				assert.deepEqual(hash.digest(), v.hash);
+				assert.deepEqual(hashCopy.digest(), v.hash);
+			}
+		}
+	});
 });
 
 describe('binding', function() {

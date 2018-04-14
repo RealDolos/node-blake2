@@ -38,6 +38,8 @@ public:
 		Nan::SetPrototypeMethod(tpl, "update", Update);
 		Nan::SetPrototypeMethod(tpl, "digest", Digest);
 		Nan::SetPrototypeMethod(tpl, "copy", Copy);
+		Nan::SetPrototypeMethod(tpl, "saveState", SaveState);
+		Nan::SetPrototypeMethod(tpl, "restoreState", RestoreState);
 		target->Set(Nan::New("Hash").ToLocalChecked(), tpl->GetFunction());
 	}
 
@@ -247,6 +249,43 @@ public:
 		dest->state = src->state;
 
 		info.GetReturnValue().Set(inst);
+	}
+
+	static
+	NAN_METHOD(SaveState) {
+		Hash *hash = Nan::ObjectWrap::Unwrap<Hash>(info.This());
+
+		v8::Local<v8::Value> rc = Nan::Encode(
+			reinterpret_cast<const char*>(&hash->state),
+			sizeof(any_blake2_state),
+			Nan::BUFFER
+		);
+
+		info.GetReturnValue().Set(rc);
+	}
+
+	static
+	NAN_METHOD(RestoreState) {
+		Hash *hash = Nan::ObjectWrap::Unwrap<Hash>(info.This());
+
+		if (!hash->initialized_) {
+			v8::Local<v8::Value> exception = v8::Exception::Error(Nan::New<v8::String>("Not initialized").ToLocalChecked());
+			return Nan::ThrowError(exception);
+		}
+
+		if (info.Length() < 1 || !node::Buffer::HasInstance(info[0])) {
+			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("Bad argument; need a Buffer").ToLocalChecked()));
+		}
+
+		v8::Local<v8::Object> buffer_obj = info[0]->ToObject();
+		const char *buffer_data = node::Buffer::Data(buffer_obj);
+		size_t buffer_length = node::Buffer::Length(buffer_obj);
+		if (buffer_length != sizeof(any_blake2_state)) {
+			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("Bad argument; Incorrect length").ToLocalChecked()));
+		}
+		memcpy(&hash->state, buffer_data, sizeof(any_blake2_state));
+
+		info.GetReturnValue().Set(info.This());
 	}
 };
 
