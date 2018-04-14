@@ -122,6 +122,32 @@ console.log(h.digest());
 console.log(j.digest());
 ```
 
+### Storing and restoring the hash state
+
+In case you need to continue with a partial hash later on, the `.saveState()` and `.restoreState()` methods are for you!
+
+```js
+var blake2 = require('blake2');
+var h = blake2.createHash('blake2b');
+h.update(new Buffer("test"));
+
+// Call .saveState() before .digest(), because .digest() finalizes internal state
+var state = h.saveState();
+
+h.update(new Buffer("more"));
+console.log(h.digest());
+
+// Much, MUCH later, in another process in another galaxy
+var j = blake2.createHash('blake2b');
+j.restoreState(state);
+
+// h is unaffected by updates to j
+j.update(new Buffer("more"));
+
+// This will be the same as h.digest()
+console.log(j.digest());
+```
+
 Known issues
 ---
 
