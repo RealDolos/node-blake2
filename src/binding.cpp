@@ -54,7 +54,7 @@ public:
 		if (info.Length() < 1 || !info[0]->IsString()) {
 			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("First argument must be a string with algorithm name").ToLocalChecked()));
 		}
-		std::string algo = std::string(*v8::String::Utf8Value(info[0]->ToString()));
+		std::string algo(*v8::String::Utf8Value(v8::Isolate::GetCurrent(), info[0]->ToString()));
 
 		const char *key_data = nullptr;
 		size_t key_length;
@@ -233,7 +233,8 @@ public:
 		v8::Local<v8::Value> argv[argc] = { Nan::New<v8::String>("bypass").ToLocalChecked() };
 
 		v8::Local<v8::FunctionTemplate> construct = Nan::New<v8::FunctionTemplate>(hash_constructor);
-		v8::Local<v8::Object> inst = construct->GetFunction()->NewInstance(argc, argv);
+		v8::MaybeLocal<v8::Object> minst = construct->GetFunction()->NewInstance(Nan::GetCurrentContext(), argc, argv);
+		v8::Local<v8::Object> inst = minst.ToLocalChecked();
 		// Construction may fail with a JS exception, in which case we just need
 		// to return.
 		if (inst.IsEmpty()) {
