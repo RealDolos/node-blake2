@@ -54,7 +54,8 @@ public:
 		if (info.Length() < 1 || !info[0]->IsString()) {
 			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("First argument must be a string with algorithm name").ToLocalChecked()));
 		}
-		std::string algo(*v8::String::Utf8Value(v8::Isolate::GetCurrent(), info[0]->ToString()));
+		Nan::Utf8String walgo(info[0]);
+		std::string algo(*walgo);
 
 		const char *key_data = nullptr;
 		size_t key_length;
@@ -227,20 +228,25 @@ public:
 
 	static
 	NAN_METHOD(Copy) {
-		Hash *src = Nan::ObjectWrap::Unwrap<Hash>(info.This());
+		const auto src = Nan::ObjectWrap::Unwrap<Hash>(info.This());
 
 		const unsigned argc = 1;
 		v8::Local<v8::Value> argv[argc] = { Nan::New<v8::String>("bypass").ToLocalChecked() };
 
-		v8::Local<v8::FunctionTemplate> construct = Nan::New<v8::FunctionTemplate>(hash_constructor);
-		v8::MaybeLocal<v8::Object> minst = construct->GetFunction()->NewInstance(Nan::GetCurrentContext(), argc, argv);
-		v8::Local<v8::Object> inst = minst.ToLocalChecked();
+		auto ctor = Nan::GetFunction(
+				Nan::New<v8::FunctionTemplate>(hash_constructor)).ToLocalChecked();
+		// May fail with a JS exception, in which case we just need
+		// to return.
+		if (ctor.IsEmpty()) {
+			return;
+		}
+		auto inst = Nan::NewInstance(ctor, argc, argv).ToLocalChecked();
 		// Construction may fail with a JS exception, in which case we just need
 		// to return.
 		if (inst.IsEmpty()) {
 			return;
 		}
-		Hash *dest = new Hash();
+		const auto dest = new Hash();
 		dest->Wrap(inst);
 
 		dest->initialized_ = src->initialized_;
@@ -256,7 +262,7 @@ public:
 	NAN_METHOD(SaveState) {
 		Hash *hash = Nan::ObjectWrap::Unwrap<Hash>(info.This());
 
-		v8::Local<v8::Value> rc = Nan::Encode(
+		auto rc = Nan::Encode(
 			reinterpret_cast<const char*>(&hash->state),
 			sizeof(any_blake2_state),
 			Nan::BUFFER
@@ -267,10 +273,10 @@ public:
 
 	static
 	NAN_METHOD(RestoreState) {
-		Hash *hash = Nan::ObjectWrap::Unwrap<Hash>(info.This());
+		const auto hash = Nan::ObjectWrap::Unwrap<Hash>(info.This());
 
 		if (!hash->initialized_) {
-			v8::Local<v8::Value> exception = v8::Exception::Error(Nan::New<v8::String>("Not initialized").ToLocalChecked());
+			auto exception = v8::Exception::Error(Nan::New<v8::String>("Not initialized").ToLocalChecked());
 			return Nan::ThrowError(exception);
 		}
 
@@ -278,9 +284,9 @@ public:
 			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("Bad argument; need a Buffer").ToLocalChecked()));
 		}
 
-		v8::Local<v8::Object> buffer_obj = info[0]->ToObject();
-		const char *buffer_data = node::Buffer::Data(buffer_obj);
-		size_t buffer_length = node::Buffer::Length(buffer_obj);
+		auto buffer_obj = info[0]->ToObject();
+		const auto buffer_data = node::Buffer::Data(buffer_obj);
+		const auto buffer_length = node::Buffer::Length(buffer_obj);
 		if (buffer_length != sizeof(any_blake2_state)) {
 			return Nan::ThrowError(v8::Exception::TypeError(Nan::New<v8::String>("Bad argument; Incorrect length").ToLocalChecked()));
 		}
